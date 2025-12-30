@@ -1,21 +1,19 @@
-import base64
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from config import CHANNEL_URL, ADMIN_USERNAME, PAYME_MERCHANT_ID, PAYME_AMOUNT, PAYME_TEST_MODE
 
 
 def get_payme_checkout_url(user_id: int) -> str:
     """Payme checkout URL yaratish"""
-    # Base64 uchun string
-    params = f"m={PAYME_MERCHANT_ID};ac.user_id={user_id};a={PAYME_AMOUNT}"
-
-    # Base64 encode
-    encoded = base64.b64encode(params.encode()).decode()
-
     # Test yoki production
     if PAYME_TEST_MODE:
-        return f"https://test.payme.uz/checkout/{encoded}"
+        base_url = "https://test.payme.uz/checkout"
     else:
-        return f"https://payme.uz/checkout/{encoded}"
+        base_url = "https://payme.uz/checkout"
+
+    # URL yaratish
+    url = f"{base_url}/{PAYME_MERCHANT_ID}?amount={PAYME_AMOUNT}&account[user_id]={user_id}"
+
+    return url
 
 
 def get_start_keyboard() -> InlineKeyboardMarkup:
