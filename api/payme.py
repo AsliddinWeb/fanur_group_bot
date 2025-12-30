@@ -131,6 +131,12 @@ async def check_perform_transaction(params: dict):
             f"Invalid amount. Expected {PAYME_AMOUNT}, got {amount}"
         )
 
+    # Shu user uchun pending tranzaksiya bormi
+    from services.payme_service import get_pending_order_by_user
+    pending_order = await get_pending_order_by_user(int(user_id))
+    if pending_order:
+        return error_response(PaymeError.ORDER_NOT_FOUND, "Another transaction in progress")
+
     return success_response({"allow": True})
 
 
