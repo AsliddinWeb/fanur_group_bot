@@ -1,9 +1,13 @@
+import logging
+import asyncio
 from telegram import Update
-from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
+from telegram.ext import ContextTypes, ConversationHandler
 from middlewares.admin_check import admin_required_callback
 from keyboards.inline import get_back_keyboard, get_cancel_keyboard
 from services.user_service import get_all_users
-import asyncio
+from config import BROADCAST_DELAY
+
+logger = logging.getLogger(__name__)
 
 # States
 WAITING_BROADCAST_CONTENT = 1
@@ -37,6 +41,8 @@ async def receive_broadcast_content(update: Update, context: ContextTypes.DEFAUL
     total = len(users)
     success = 0
     failed = 0
+
+    logger.info(f"Broadcast started: {total} users")
 
     progress_message = await message.reply_text(
         f"📤 Yuborilmoqda...\n\n"
@@ -80,6 +86,7 @@ async def receive_broadcast_content(update: Update, context: ContextTypes.DEFAUL
             success += 1
         except Exception as e:
             failed += 1
+            logger.debug(f"Broadcast failed for user {user['chat_id']}: {e}")
 
         # Har 20 ta userda progressni yangilash
         if (success + failed) % 20 == 0:
@@ -93,7 +100,7 @@ async def receive_broadcast_content(update: Update, context: ContextTypes.DEFAUL
             except:
                 pass
 
-        await asyncio.sleep(0.05)  # Telegram limitidan qochish
+        await asyncio.sleep(BROADCAST_DELAY)
 
     # Yakuniy natija
     await progress_message.edit_text(
@@ -103,6 +110,8 @@ async def receive_broadcast_content(update: Update, context: ContextTypes.DEFAUL
         f"📊 Jami: {total}",
         parse_mode='HTML'
     )
+
+    logger.info(f"Broadcast finished: success={success}, failed={failed}")
 
     context.user_data.clear()
     return ConversationHandler.END

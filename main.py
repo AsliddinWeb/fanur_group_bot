@@ -1,3 +1,4 @@
+import logging
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -9,8 +10,15 @@ from telegram.ext import (
     filters
 )
 
-from config import BOT_TOKEN
+from config import BOT_TOKEN, BOT_NAME, LOG_LEVEL
 from database.models import create_tables
+
+# Logging sozlash
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Handlers
 from handlers.start import (
@@ -124,14 +132,14 @@ async def lifespan(app: FastAPI):
 
     # Database yaratish
     await create_tables()
-    print("✅ Database tayyor!")
+    logger.info("✅ Database tayyor!")
 
     # Bot ishga tushirish
     bot_app = setup_bot()
     await bot_app.initialize()
     await bot_app.start()
     await bot_app.updater.start_polling(drop_pending_updates=True)
-    print("✅ Bot ishga tushdi!")
+    logger.info(f"✅ {BOT_NAME} ishga tushdi!")
 
     yield
 
@@ -139,27 +147,29 @@ async def lifespan(app: FastAPI):
     await bot_app.updater.stop()
     await bot_app.stop()
     await bot_app.shutdown()
-    print("🛑 Bot to'xtadi!")
+    logger.info(f"🛑 {BOT_NAME} to'xtadi!")
 
 
 # FastAPI app
 app = FastAPI(
-    title="Shohjahon Mustafayev Bot API",
+    title=BOT_NAME,
+    description="Payme to'lov integratsiyasi bilan Telegram bot",
+    version="1.0.0",
     lifespan=lifespan
 )
 
 # Payme router
-app.include_router(payme_router, prefix="/api")
+app.include_router(payme_router, prefix="/api", tags=["Payme"])
 
 
-@app.get("/")
+@app.get("/", tags=["Health"])
 async def root():
-    return {"status": "ok", "message": "Bot ishlayapti!"}
+    return {"status": "ok", "bot": BOT_NAME, "message": "Bot ishlayapti!"}
 
 
-@app.get("/health")
+@app.get("/health", tags=["Health"])
 async def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "bot": BOT_NAME}
 
 
 def get_bot() -> Application:
