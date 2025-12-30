@@ -19,8 +19,10 @@ from services.payme_service import (
     update_order_state,
     set_order_perform_time,
     set_order_cancel_time,
-    get_orders_by_time_range
+    get_orders_by_time_range,
+    has_successful_payment
 )
+from services.user_service import get_user
 
 # Logger
 logger = logging.getLogger(__name__)
@@ -32,6 +34,8 @@ router = APIRouter()
 class PaymeError:
     INVALID_AMOUNT = -31001
     ORDER_NOT_FOUND = -31050
+    USER_NOT_FOUND = -31050
+    ALREADY_PAID = -31051
     CANT_PERFORM = -31008
     TRANSACTION_NOT_FOUND = -31003
     INVALID_ACCOUNT = -31050
@@ -152,6 +156,17 @@ async def check_perform_transaction(params: dict) -> dict:
     if not user_id:
         return error_response(PaymeError.INVALID_ACCOUNT, "User ID not found")
 
+    # User ID raqammi tekshirish
+    try:
+        user_id_int = int(user_id)
+    except ValueError:
+        return error_response(PaymeError.INVALID_ACCOUNT, "Invalid user ID format")
+
+    # User bazada bormi tekshirish
+    user = await get_user(user_id_int)
+    if not user:
+        return error_response(PaymeError.USER_NOT_FOUND, "User not found")
+
     # Summa tekshirish
     if amount != PAYME_AMOUNT:
         return error_response(
@@ -159,9 +174,13 @@ async def check_perform_transaction(params: dict) -> dict:
             f"Invalid amount. Expected {PAYME_AMOUNT}, got {amount}"
         )
 
+    # User allaqachon to'lov qilganmi
+    if await has_successful_payment(user_id_int):
+        return error_response(PaymeError.ALREADY_PAID, "User already paid")
+
     # Shu user uchun pending tranzaksiya bormi
     try:
-        pending_order = await get_pending_order_by_user(int(user_id))
+        pending_order = await get_pending_order_by_user(user_id_int)
         if pending_order:
             return error_response(PaymeError.ORDER_NOT_FOUND, "Another transaction in progress")
     except Exception as e:
@@ -184,9 +203,24 @@ async def create_transaction(params: dict) -> dict:
     if not user_id:
         return error_response(PaymeError.INVALID_ACCOUNT, "User ID not found")
 
+    # User ID raqammi tekshirish
+    try:
+        user_id_int = int(user_id)
+    except ValueError:
+        return error_response(PaymeError.INVALID_ACCOUNT, "Invalid user ID format")
+
+    # User bazada bormi tekshirish
+    user = await get_user(user_id_int)
+    if not user:
+        return error_response(PaymeError.USER_NOT_FOUND, "User not found")
+
     # Summa tekshirish
     if amount != PAYME_AMOUNT:
         return error_response(PaymeError.INVALID_AMOUNT, "Invalid amount")
+
+    # User allaqachon to'lov qilganmi
+    if await has_successful_payment(user_id_int):
+        return error_response(PaymeError.ALREADY_PAID, "User already paid")
 
     try:
         # Mavjud tranzaksiya bormi (shu payme_id bilan)
@@ -203,14 +237,14 @@ async def create_transaction(params: dict) -> dict:
             })
 
         # Shu user uchun pending tranzaksiya bormi
-        pending_order = await get_pending_order_by_user(int(user_id))
+        pending_order = await get_pending_order_by_user(user_id_int)
         if pending_order:
             # Agar boshqa tranzaksiya band qilgan bo'lsa
             if pending_order['payme_transaction_id'] != payme_id:
                 return error_response(PaymeError.ORDER_NOT_FOUND, "Another transaction in progress")
 
         # Yangi order yaratish
-        order_id = await create_order(int(user_id), amount)
+        order_id = await create_order(user_id_int, amount)
         logger.info(f"Order created: {order_id}")
 
         # Payme ID ni saqlash
