@@ -150,14 +150,26 @@ async def create_transaction(params: dict):
     if amount != PAYME_AMOUNT:
         return error_response(PaymeError.INVALID_AMOUNT, "Invalid amount")
 
-    # Mavjud tranzaksiya bormi
+    # Mavjud tranzaksiya bormi (shu payme_id bilan)
     existing = await get_order_by_payme_id(payme_id)
     if existing:
+        # Agar bekor qilingan bo'lsa
+        if existing['state'] == -1:
+            return error_response(PaymeError.CANT_PERFORM, "Transaction cancelled")
+
         return success_response({
             "create_time": timestamp_to_ms(existing['created_at']),
             "transaction": str(existing['id']),
             "state": existing['state']
         })
+
+    # Shu user uchun pending tranzaksiya bormi
+    from services.payme_service import get_pending_order_by_user
+    pending_order = await get_pending_order_by_user(int(user_id))
+    if pending_order:
+        # Agar boshqa tranzaksiya band qilgan bo'lsa
+        if pending_order['payme_transaction_id'] != payme_id:
+            return error_response(PaymeError.ORDER_NOT_FOUND, "Another transaction in progress")
 
     # Yangi order yaratish
     from services.payme_service import create_order

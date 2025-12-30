@@ -158,3 +158,15 @@ async def get_recent_orders(limit: int = 10):
             LIMIT ?
         ''', (limit,)) as cursor:
             return await cursor.fetchall()
+
+async def get_pending_order_by_user(user_id: int):
+    """Foydalanuvchining pending orderini olish"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute('''
+            SELECT * FROM payme_transactions 
+            WHERE user_id = ? AND state = 1
+            ORDER BY created_at DESC
+            LIMIT 1
+        ''', (user_id,)) as cursor:
+            return await cursor.fetchone()
