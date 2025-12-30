@@ -12,9 +12,10 @@ def get_payme_checkout_url(user_id: int) -> str:
     encoded = base64.b64encode(params.encode()).decode()
 
     # Test yoki production
-    base_url = "https://test.paycom.uz" if PAYME_TEST_MODE else "https://checkout.paycom.uz"
-
-    return f"{base_url}/{encoded}"
+    if PAYME_TEST_MODE:
+        return f"https://test.payme.uz/checkout/{encoded}"
+    else:
+        return f"https://payme.uz/checkout/{encoded}"
 
 
 def get_start_keyboard() -> InlineKeyboardMarkup:
