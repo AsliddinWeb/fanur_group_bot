@@ -38,3 +38,4 @@ def format_admin_info(admin, index: int) -> str:
 
 def get_timestamp() -> str:
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+

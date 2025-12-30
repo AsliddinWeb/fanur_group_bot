@@ -143,50 +143,51 @@ async def payme_webhook(request: Request):
 
     return JSONResponse(content=result, status_code=200)
 
+PAYME_PENDING_TIMEOUT_MS = 15 * 60 * 1000  # 15 minut
+
+def is_pending_expired(created_at) -> bool:
+    # created_at
+    ct_ms = timestamp_to_ms(created_at)
+    if not ct_ms:
+        return False
+    now_ms = int(datetime.utcnow().timestamp() * 1000)
+    return (now_ms - ct_ms) > PAYME_PENDING_TIMEOUT_MS
+
 
 async def check_perform_transaction(params: dict) -> dict:
-    """To'lov qilish mumkinmi tekshirish"""
     account = params.get("account", {})
     amount = params.get("amount")
     user_id = account.get("user_id")
 
-    logger.info(f"CheckPerformTransaction: user_id={user_id}, amount={amount}")
-
-    # User ID tekshirish
     if not user_id:
         return error_response(PaymeError.INVALID_ACCOUNT, "User ID not found")
 
-    # User ID raqammi tekshirish
     try:
         user_id_int = int(user_id)
     except ValueError:
         return error_response(PaymeError.INVALID_ACCOUNT, "Invalid user ID format")
 
-    # User bazada bormi tekshirish
     user = await get_user(user_id_int)
     if not user:
         return error_response(PaymeError.USER_NOT_FOUND, "User not found")
 
-    # Summa tekshirish
     if amount != PAYME_AMOUNT:
         return error_response(
             PaymeError.INVALID_AMOUNT,
             f"Invalid amount. Expected {PAYME_AMOUNT}, got {amount}"
         )
 
-    # User allaqachon to'lov qilganmi
     if await has_successful_payment(user_id_int):
         return error_response(PaymeError.ALREADY_PAID, "User already paid")
 
-    # Shu user uchun pending tranzaksiya bormi
-    try:
-        pending_order = await get_pending_order_by_user(user_id_int)
-        if pending_order:
-            return error_response(PaymeError.ORDER_NOT_FOUND, "Another transaction in progress")
-    except Exception as e:
-        logger.error(f"Check pending order error: {e}")
+    # ✅ Pending bor bo‘lsa ham allow:true qaytaramiz,
+    # faqat expired bo‘lsa avtomatik cancel qilib yuboramiz
+    pending = await get_pending_order_by_user(user_id_int)
+    if pending and is_pending_expired(pending["created_at"]):
+        await set_order_cancel_time(pending["order_id"], reason=4, new_state=-1)  # reason=4 (timeout) misol
 
     return success_response({"allow": True})
+
 
 
 async def create_transaction(params: dict) -> dict:
