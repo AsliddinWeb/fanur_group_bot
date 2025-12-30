@@ -6,6 +6,7 @@ load_dotenv()
 # Bot
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 BOT_NAME = os.getenv("BOT_NAME", "Fanur Group Bot")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "fanur_group_bot")
 
 # Owner (asosiy admin)
 OWNER_ID = int(os.getenv("OWNER_ID"))
