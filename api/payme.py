@@ -240,22 +240,26 @@ async def cancel_transaction(params: dict):
         return error_response(PaymeError.TRANSACTION_NOT_FOUND, "Transaction not found")
 
     # Allaqachon bekor qilingan
-    if order['state'] == -1:
+    if order['state'] in [-1, -2]:
         return success_response({
             "transaction": str(order['id']),
             "cancel_time": timestamp_to_ms(order['cancel_time']),
-            "state": -1
+            "state": order['state']
         })
 
-    # Bekor qilish
-    await set_order_cancel_time(order['order_id'], reason)
+    # State bo'yicha bekor qilish
+    # state=1 (yaratilgan) -> -1
+    # state=2 (bajarilgan) -> -2
+    new_state = -1 if order['state'] == 1 else -2
+
+    await set_order_cancel_time(order['order_id'], reason, new_state)
 
     order = await get_order_by_id(order['order_id'])
 
     return success_response({
         "transaction": str(order['id']),
         "cancel_time": timestamp_to_ms(order['cancel_time']),
-        "state": -1
+        "state": order['state']
     })
 
 

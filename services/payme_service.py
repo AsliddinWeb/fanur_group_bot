@@ -81,14 +81,14 @@ async def set_order_perform_time(order_id: str):
         await db.commit()
 
 
-async def set_order_cancel_time(order_id: str, reason: int):
+async def set_order_cancel_time(order_id: str, reason: int, state: int = -1):
     """Bekor qilish vaqtini belgilash"""
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute('''
             UPDATE payme_transactions 
-            SET state = -1, reason = ?, cancel_time = ?
+            SET state = ?, reason = ?, cancel_time = ?
             WHERE order_id = ?
-        ''', (reason, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), order_id))
+        ''', (state, reason, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), order_id))
         await db.commit()
 
 
