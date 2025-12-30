@@ -33,6 +33,8 @@ PAYME_SECRET_KEY = os.getenv("PAYME_SECRET_KEY")
 PAYME_TEST_KEY = os.getenv("PAYME_TEST_KEY")
 PAYME_AMOUNT = int(os.getenv("PAYME_AMOUNT", 9700000))  # tiyin
 PAYME_TEST_MODE = os.getenv("PAYME_TEST_MODE", "false").lower() == "true"
+PAYME_CHECKOUT_URL = os.getenv("PAYME_CHECKOUT_URL", "https://checkout.paycom.uz")
+PAYME_TEST_CHECKOUT_URL = os.getenv("PAYME_TEST_CHECKOUT_URL", "https://test.paycom.uz")
 
 # Broadcast
 BROADCAST_DELAY = float(os.getenv("BROADCAST_DELAY", 0.05))

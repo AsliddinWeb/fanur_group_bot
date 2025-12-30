@@ -1,119 +1,119 @@
+import base64
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from config import CHANNEL_URL, ADMIN_USERNAME, PAYME_MERCHANT_ID, PAYME_AMOUNT, PAYME_TEST_MODE
+from config import (
+    CHANNEL_URL,
+    ADMIN_USERNAME,
+    PAYME_MERCHANT_ID,
+    PAYME_AMOUNT,
+    PAYME_TEST_MODE,
+    PAYME_CHECKOUT_URL,
+    PAYME_TEST_CHECKOUT_URL,
+    BOT_USERNAME
+)
 
 
 def get_payme_checkout_url(user_id: int) -> str:
-    """Payme checkout URL yaratish"""
+    """Payme checkout URL yaratish (base64 encoded)"""
+    # Callback URL (to'lovdan keyin qaytish)
+    callback_url = f"https://t.me/{BOT_USERNAME}?start=after_payment"
+
+    # Base64 uchun string
+    params = f"m={PAYME_MERCHANT_ID};ac.user_id={user_id};a={PAYME_AMOUNT};c={callback_url}"
+
+    # Base64 encode
+    encoded = base64.b64encode(params.encode()).decode()
+
     # Test yoki production
-    if PAYME_TEST_MODE:
-        base_url = "https://test.payme.uz/checkout"
-    else:
-        base_url = "https://payme.uz/checkout"
+    base_url = PAYME_TEST_CHECKOUT_URL if PAYME_TEST_MODE else PAYME_CHECKOUT_URL
 
-    # URL yaratish
-    url = f"{base_url}/{PAYME_MERCHANT_ID}?amount={PAYME_AMOUNT}&account[user_id]={user_id}"
-
-    return url
+    return f"{base_url}/{encoded}"
 
 
 def get_start_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
-        [InlineKeyboardButton("📢 Kanalga qo'shilish", url=CHANNEL_URL)],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Kanalga qo'shilish", url=CHANNEL_URL)]
+    ])
 
 
 def get_check_subscription_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
+    return InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 Kanalga qo'shilish", url=CHANNEL_URL)],
-        [InlineKeyboardButton("✅ Tekshirish", callback_data="check_subscription")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        [InlineKeyboardButton("✅ Tekshirish", callback_data="check_subscription")]
+    ])
 
 
 def get_payment_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    payme_url = get_payme_checkout_url(user_id)
+    admin_url = f"https://t.me/{ADMIN_USERNAME.replace('@', '')}"
 
-    keyboard = [
-        [InlineKeyboardButton("💳 Payme orqali to'lash", url=payme_url)],
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("💳 Payme orqali to'lash", url=get_payme_checkout_url(user_id))],
         [
-            InlineKeyboardButton("⁉️ Yordam", url=f"https://t.me/{ADMIN_USERNAME.replace('@', '')}"),
+            InlineKeyboardButton("⁉️ Yordam", url=admin_url),
             InlineKeyboardButton("🔍 To'lovlar tarix", callback_data="payment_history")
-        ],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        ]
+    ])
 
 
 def get_back_to_payment_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    keyboard = [
-        [InlineKeyboardButton("🔙 Orqaga", callback_data="back_to_payment")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Orqaga", callback_data="back_to_payment")]
+    ])
 
 
 def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
+    return InlineKeyboardMarkup([
         [InlineKeyboardButton("📊 Statistika", callback_data="admin_stats")],
         [InlineKeyboardButton("💰 Payme to'lovlar", callback_data="admin_payme")],
         [InlineKeyboardButton("📢 Reklama yuborish", callback_data="admin_broadcast")],
         [InlineKeyboardButton("🔍 Foydalanuvchi qidirish", callback_data="admin_search")],
         [InlineKeyboardButton("📥 Export", callback_data="admin_export")],
         [InlineKeyboardButton("👥 Adminlar", callback_data="admin_manage")],
-        [InlineKeyboardButton("⚙️ Majburiy obuna", callback_data="admin_subscription")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        [InlineKeyboardButton("⚙️ Majburiy obuna", callback_data="admin_subscription")]
+    ])
 
 
 def get_back_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
-        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")]
+    ])
 
 
 def get_subscription_settings_keyboard(is_enabled: bool) -> InlineKeyboardMarkup:
-    status_btn = InlineKeyboardButton(
-        "❌ O'chirish" if is_enabled else "✅ Yoqish",
-        callback_data="toggle_subscription"
-    )
-    keyboard = [
-        [status_btn],
+    toggle_text = "❌ O'chirish" if is_enabled else "✅ Yoqish"
+
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(toggle_text, callback_data="toggle_subscription")],
         [InlineKeyboardButton("📝 Kanal o'zgartirish", callback_data="change_channel")],
-        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")]
+    ])
 
 
 def get_admin_manage_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
+    return InlineKeyboardMarkup([
         [InlineKeyboardButton("➕ Admin qo'shish", callback_data="add_admin")],
         [InlineKeyboardButton("➖ Admin o'chirish", callback_data="remove_admin")],
         [InlineKeyboardButton("📋 Adminlar ro'yxati", callback_data="list_admins")],
-        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")]
+    ])
 
 
 def get_export_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
+    return InlineKeyboardMarkup([
         [InlineKeyboardButton("📄 CSV", callback_data="export_csv")],
         [InlineKeyboardButton("📊 Excel", callback_data="export_excel")],
-        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")]
+    ])
 
 
 def get_cancel_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
-        [InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel_action")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("❌ Bekor qilish", callback_data="cancel_action")]
+    ])
 
 
 def get_payme_stats_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
+    return InlineKeyboardMarkup([
         [InlineKeyboardButton("📊 Payme statistikasi", callback_data="payme_stats")],
         [InlineKeyboardButton("📋 Oxirgi to'lovlar", callback_data="payme_recent")],
-        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+        [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")]
+    ])
