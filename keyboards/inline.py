@@ -1,5 +1,20 @@
+import base64
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from config import CHANNEL_URL, ADMIN_USERNAME, PAYME_CHECKOUT_URL, PAYME_MERCHANT_ID, PAYME_AMOUNT
+from config import CHANNEL_URL, ADMIN_USERNAME, PAYME_MERCHANT_ID, PAYME_AMOUNT, PAYME_TEST_MODE
+
+
+def get_payme_checkout_url(user_id: int) -> str:
+    """Payme checkout URL yaratish"""
+    # Base64 uchun string
+    params = f"m={PAYME_MERCHANT_ID};ac.user_id={user_id};a={PAYME_AMOUNT}"
+
+    # Base64 encode
+    encoded = base64.b64encode(params.encode()).decode()
+
+    # Test yoki production
+    base_url = "https://test.paycom.uz" if PAYME_TEST_MODE else "https://checkout.paycom.uz"
+
+    return f"{base_url}/{encoded}"
 
 
 def get_start_keyboard() -> InlineKeyboardMarkup:
@@ -18,8 +33,7 @@ def get_check_subscription_keyboard() -> InlineKeyboardMarkup:
 
 
 def get_payment_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    # Payme checkout URL
-    payme_url = f"{PAYME_CHECKOUT_URL}/{PAYME_MERCHANT_ID}?a={PAYME_AMOUNT}&ac.user_id={user_id}"
+    payme_url = get_payme_checkout_url(user_id)
 
     keyboard = [
         [InlineKeyboardButton("💳 Payme orqali to'lash", url=payme_url)],
