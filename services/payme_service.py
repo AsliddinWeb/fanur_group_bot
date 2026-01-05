@@ -139,12 +139,20 @@ async def get_orders_by_time_range(start_time: int, end_time: int):
     """Vaqt oralig'idagi orderlar (GetStatement uchun)"""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
+
+        # Payme UTC da yuboradi, server local time da saqlaydi
+        # 5 soat qo'shamiz (UTC+5 Toshkent)
+        timezone_offset = 5 * 3600  # 5 soat sekundda
+
+        start_sec = (start_time // 1000) + timezone_offset
+        end_sec = (end_time // 1000) + timezone_offset
+
         async with db.execute('''
             SELECT * FROM payme_transactions 
             WHERE state = 2
-            AND strftime('%s', created_at) BETWEEN ? AND ?
-            ORDER BY created_at
-        ''', (start_time // 1000, end_time // 1000)) as cursor:
+            AND strftime('%s', perform_time) BETWEEN ? AND ?
+            ORDER BY perform_time
+        ''', (start_sec, end_sec)) as cursor:
             return await cursor.fetchall()
 
 async def get_recent_orders(limit: int = 10):
