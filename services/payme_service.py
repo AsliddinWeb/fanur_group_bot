@@ -141,10 +141,9 @@ async def get_orders_by_time_range(start_time: int, end_time: int):
         db.row_factory = aiosqlite.Row
         async with db.execute('''
             SELECT * FROM payme_transactions 
-            WHERE state = 2 
-            AND perform_time BETWEEN datetime(?, 'unixepoch', 'localtime') 
-            AND datetime(?, 'unixepoch', 'localtime')
-            ORDER BY perform_time
+            WHERE state = 2
+            AND strftime('%s', created_at) BETWEEN ? AND ?
+            ORDER BY created_at
         ''', (start_time // 1000, end_time // 1000)) as cursor:
             return await cursor.fetchall()
 
