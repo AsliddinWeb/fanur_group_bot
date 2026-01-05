@@ -139,17 +139,11 @@ async def get_orders_by_time_range(start_time: int, end_time: int):
     """Vaqt oralig'idagi orderlar (GetStatement uchun)"""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-
-        # Millisekund -> sekund
-        start_sec = start_time // 1000
-        end_sec = end_time // 1000
-
         async with db.execute('''
             SELECT * FROM payme_transactions 
             WHERE state = 2
-            AND strftime('%s', perform_time) BETWEEN ? AND ?
             ORDER BY perform_time
-        ''', (start_sec, end_sec)) as cursor:
+        ''') as cursor:
             return await cursor.fetchall()
 
 async def get_recent_orders(limit: int = 10):
