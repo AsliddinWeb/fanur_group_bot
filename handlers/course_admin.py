@@ -240,7 +240,7 @@ async def course_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
         f"🔗 <b>Kanal URL:</b> {course['channel_url'] or '-'}\n"
         f"📅 <b>Yaratilgan:</b> {course['created_at']}\n\n"
         f"📝 <b>Welcome matn:</b>\n"
-        f"<i>{course['welcome_text'][:200] + '...' if course['welcome_text'] and len(course['welcome_text']) > 200 else course['welcome_text'] or '-'}</i>"
+        f"{course['welcome_text'][:200] + '...' if course['welcome_text'] and len(course['welcome_text']) > 200 else course['welcome_text'] or '-'}"
     )
 
     await query.message.edit_text(
