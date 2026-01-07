@@ -232,20 +232,28 @@ async def course_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
     status = "✅ Aktiv" if course['is_active'] else "⭕ Noaktiv"
     price_text = await format_price(course['price'])
 
+    # Welcome matnni qisqartirish (HTML teglarsiz)
+    welcome_preview = course['welcome_text'] or '-'
+    if len(welcome_preview) > 100:
+        welcome_preview = welcome_preview[:100] + '...'
+    # HTML teglarni olib tashlash
+    welcome_preview = welcome_preview.replace('<b>', '').replace('</b>', '')
+    welcome_preview = welcome_preview.replace('<i>', '').replace('</i>', '')
+    welcome_preview = welcome_preview.replace('<code>', '').replace('</code>', '')
+
     text = (
-        f"📚 <b>{course['name']}</b>\n\n"
-        f"📊 <b>Status:</b> {status}\n"
-        f"💰 <b>Narx:</b> {price_text} so'm\n"
-        f"📢 <b>Kanal ID:</b> <code>{course['channel_id']}</code>\n"
-        f"🔗 <b>Kanal URL:</b> {course['channel_url'] or '-'}\n"
-        f"📅 <b>Yaratilgan:</b> {course['created_at']}\n\n"
-        f"📝 <b>Welcome matn:</b>\n"
-        f"{course['welcome_text'][:200] + '...' if course['welcome_text'] and len(course['welcome_text']) > 200 else course['welcome_text'] or '-'}"
+        f"📚 {course['name']}\n\n"
+        f"📊 Status: {status}\n"
+        f"💰 Narx: {price_text} so'm\n"
+        f"📢 Kanal ID: {course['channel_id']}\n"
+        f"🔗 Kanal URL: {course['channel_url'] or '-'}\n"
+        f"📅 Yaratilgan: {course['created_at']}\n\n"
+        f"📝 Welcome matn:\n"
+        f"{welcome_preview}"
     )
 
     await query.message.edit_text(
         text=text,
-        parse_mode='HTML',
         reply_markup=get_course_detail_keyboard(course_id, course['is_active'])
     )
 
