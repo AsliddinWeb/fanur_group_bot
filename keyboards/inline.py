@@ -4,7 +4,6 @@ from config import (
     CHANNEL_URL,
     ADMIN_USERNAME,
     PAYME_MERCHANT_ID,
-    PAYME_AMOUNT,
     PAYME_TEST_MODE,
     PAYME_CHECKOUT_URL,
     PAYME_TEST_CHECKOUT_URL,
@@ -12,13 +11,13 @@ from config import (
 )
 
 
-def get_payme_checkout_url(user_id: int) -> str:
+def get_payme_checkout_url(user_id: int, course_id: int, amount: int) -> str:
     """Payme checkout URL yaratish (base64 encoded)"""
     # Callback URL (to'lovdan keyin qaytish)
     callback_url = f"https://t.me/{BOT_USERNAME}?start=after_payment"
 
-    # Base64 uchun string
-    params = f"m={PAYME_MERCHANT_ID};ac.user_id={user_id};a={PAYME_AMOUNT};c={callback_url}"
+    # Base64 uchun string (course_id ham qo'shildi)
+    params = f"m={PAYME_MERCHANT_ID};ac.user_id={user_id};ac.course_id={course_id};a={amount};c={callback_url}"
 
     # Base64 encode
     encoded = base64.b64encode(params.encode()).decode()
@@ -42,11 +41,12 @@ def get_check_subscription_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-def get_payment_keyboard(user_id: int) -> InlineKeyboardMarkup:
+def get_payment_keyboard(user_id: int, course_id: int, amount: int) -> InlineKeyboardMarkup:
     admin_url = f"https://t.me/{ADMIN_USERNAME.replace('@', '')}"
+    payme_url = get_payme_checkout_url(user_id, course_id, amount)
 
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💳 Payme orqali to'lash", url=get_payme_checkout_url(user_id))],
+        [InlineKeyboardButton("💳 Payme orqali to'lash", url=payme_url)],
         [
             InlineKeyboardButton("⁉️ Yordam", url=admin_url),
             InlineKeyboardButton("🔍 To'lovlar tarix", callback_data="payment_history")
@@ -54,7 +54,7 @@ def get_payment_keyboard(user_id: int) -> InlineKeyboardMarkup:
     ])
 
 
-def get_back_to_payment_keyboard(user_id: int) -> InlineKeyboardMarkup:
+def get_back_to_payment_keyboard(user_id: int, course_id: int = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🔙 Orqaga", callback_data="back_to_payment")]
     ])
@@ -63,6 +63,7 @@ def get_back_to_payment_keyboard(user_id: int) -> InlineKeyboardMarkup:
 def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📊 Statistika", callback_data="admin_stats")],
+        [InlineKeyboardButton("📚 Kurslar", callback_data="admin_courses")],
         [InlineKeyboardButton("💰 Payme to'lovlar", callback_data="admin_payme")],
         [InlineKeyboardButton("📢 Reklama yuborish", callback_data="admin_broadcast")],
         [InlineKeyboardButton("🔍 Foydalanuvchi qidirish", callback_data="admin_search")],
@@ -116,4 +117,59 @@ def get_payme_stats_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("📊 Payme statistikasi", callback_data="payme_stats")],
         [InlineKeyboardButton("📋 Oxirgi to'lovlar", callback_data="payme_recent")],
         [InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")]
+    ])
+
+
+# ============ KURSLAR UCHUN YANGI KLAVIATURALAR ============
+
+def get_courses_keyboard(courses: list) -> InlineKeyboardMarkup:
+    """Kurslar ro'yxati klaviaturasi"""
+    keyboard = []
+
+    for course in courses:
+        status = "✅" if course['is_active'] else "⭕"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{status} {course['name']}",
+                callback_data=f"course_detail_{course['id']}"
+            )
+        ])
+
+    keyboard.append([InlineKeyboardButton("➕ Yangi kurs", callback_data="add_course")])
+    keyboard.append([InlineKeyboardButton("🔙 Orqaga", callback_data="admin_back")])
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_course_detail_keyboard(course_id: int, is_active: bool) -> InlineKeyboardMarkup:
+    """Kurs tafsilotlari klaviaturasi"""
+    keyboard = []
+
+    if not is_active:
+        keyboard.append([
+            InlineKeyboardButton("✅ Aktivlashtirish", callback_data=f"activate_course_{course_id}")
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("✏️ Tahrirlash", callback_data=f"edit_course_{course_id}")
+    ])
+
+    if not is_active:
+        keyboard.append([
+            InlineKeyboardButton("🗑️ O'chirish", callback_data=f"delete_course_{course_id}")
+        ])
+
+    keyboard.append([InlineKeyboardButton("🔙 Orqaga", callback_data="admin_courses")])
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_course_edit_keyboard(course_id: int) -> InlineKeyboardMarkup:
+    """Kurs tahrirlash klaviaturasi"""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📝 Nom", callback_data=f"edit_name_{course_id}")],
+        [InlineKeyboardButton("💰 Narx", callback_data=f"edit_price_{course_id}")],
+        [InlineKeyboardButton("📢 Kanal", callback_data=f"edit_channel_{course_id}")],
+        [InlineKeyboardButton("📄 Welcome matn", callback_data=f"edit_welcome_{course_id}")],
+        [InlineKeyboardButton("🔙 Orqaga", callback_data=f"course_detail_{course_id}")]
     ])

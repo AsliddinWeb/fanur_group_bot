@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 from config import BOT_TOKEN, BOT_NAME, LOG_LEVEL
-from database.models import create_tables
+from database.models import create_tables, migrate_add_course_id
 
 # Logging sozlash
 logging.basicConfig(
@@ -50,6 +50,28 @@ from handlers.payment import (
     payme_stats_callback,
     payme_recent_callback
 )
+from handlers.course_admin import (
+    courses_menu_callback,
+    add_course_callback,
+    course_detail_callback,
+    activate_course_callback,
+    delete_course_callback,
+    edit_course_menu_callback,
+    edit_course_name_callback,
+    edit_course_price_callback,
+    edit_course_channel_callback,
+    edit_course_welcome_callback,
+    receive_course_name,
+    receive_course_price,
+    receive_course_channel_id,
+    receive_course_channel_url,
+    receive_course_welcome_text,
+    receive_edit_name,
+    receive_edit_price,
+    receive_edit_channel_id,
+    receive_edit_channel_url,
+    receive_edit_welcome_text
+)
 
 # API
 from api.payme import router as payme_router
@@ -62,16 +84,47 @@ async def handle_text_messages(update, context):
     """Text xabarlarni state bo'yicha yo'naltirish"""
     state = context.user_data.get('state')
 
+    # Broadcast
     if state == 'waiting_broadcast':
         await receive_broadcast_content(update, context)
+
+    # Search
     elif state == 'waiting_search':
         await receive_search_query(update, context)
+
+    # Admin manage
     elif state == 'waiting_add_admin':
         await receive_add_admin(update, context)
     elif state == 'waiting_remove_admin':
         await receive_remove_admin(update, context)
+
+    # Subscription
     elif state == 'waiting_channel_id':
         await receive_channel_id(update, context)
+
+    # Course - yangi kurs qo'shish
+    elif state == 'waiting_course_name':
+        await receive_course_name(update, context)
+    elif state == 'waiting_course_price':
+        await receive_course_price(update, context)
+    elif state == 'waiting_course_channel_id':
+        await receive_course_channel_id(update, context)
+    elif state == 'waiting_course_channel_url':
+        await receive_course_channel_url(update, context)
+    elif state == 'waiting_course_welcome_text':
+        await receive_course_welcome_text(update, context)
+
+    # Course - tahrirlash
+    elif state == 'waiting_edit_name':
+        await receive_edit_name(update, context)
+    elif state == 'waiting_edit_price':
+        await receive_edit_price(update, context)
+    elif state == 'waiting_edit_channel_id':
+        await receive_edit_channel_id(update, context)
+    elif state == 'waiting_edit_channel_url':
+        await receive_edit_channel_url(update, context)
+    elif state == 'waiting_edit_welcome_text':
+        await receive_edit_welcome_text(update, context)
 
 
 def setup_bot() -> Application:
@@ -103,6 +156,18 @@ def setup_bot() -> Application:
     app.add_handler(CallbackQueryHandler(payme_stats_callback, pattern="^payme_stats$"))
     app.add_handler(CallbackQueryHandler(payme_recent_callback, pattern="^payme_recent$"))
 
+    # Courses callbacks
+    app.add_handler(CallbackQueryHandler(courses_menu_callback, pattern="^admin_courses$"))
+    app.add_handler(CallbackQueryHandler(add_course_callback, pattern="^add_course$"))
+    app.add_handler(CallbackQueryHandler(course_detail_callback, pattern="^course_detail_"))
+    app.add_handler(CallbackQueryHandler(activate_course_callback, pattern="^activate_course_"))
+    app.add_handler(CallbackQueryHandler(delete_course_callback, pattern="^delete_course_"))
+    app.add_handler(CallbackQueryHandler(edit_course_menu_callback, pattern="^edit_course_"))
+    app.add_handler(CallbackQueryHandler(edit_course_name_callback, pattern="^edit_name_"))
+    app.add_handler(CallbackQueryHandler(edit_course_price_callback, pattern="^edit_price_"))
+    app.add_handler(CallbackQueryHandler(edit_course_channel_callback, pattern="^edit_channel_"))
+    app.add_handler(CallbackQueryHandler(edit_course_welcome_callback, pattern="^edit_welcome_"))
+
     # Broadcast
     app.add_handler(CallbackQueryHandler(broadcast_callback, pattern="^admin_broadcast$"))
 
@@ -130,8 +195,9 @@ async def lifespan(app: FastAPI):
     """FastAPI startup va shutdown"""
     global bot_app
 
-    # Database yaratish
+    # Database yaratish (migration ichida)
     await create_tables()
+
     logger.info("✅ Database tayyor!")
 
     # Bot ishga tushirish
@@ -154,7 +220,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=BOT_NAME,
     description="Payme to'lov integratsiyasi bilan Telegram bot",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan
 )
 

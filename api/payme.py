@@ -7,9 +7,8 @@ from fastapi.responses import JSONResponse
 from config import (
     PAYME_SECRET_KEY,
     PAYME_TEST_KEY,
-    PAYME_AMOUNT,
     PAYME_TEST_MODE,
-    PRIVATE_CHANNEL_ID
+    PAYME_MERCHANT_ID
 )
 from services.payme_service import (
     create_order,
@@ -19,10 +18,10 @@ from services.payme_service import (
     update_order_state,
     set_order_perform_time,
     set_order_cancel_time,
-    get_orders_by_time_range,
-    has_successful_payment
+    get_orders_by_time_range
 )
 from services.user_service import get_user
+from services.course_service import get_course, get_active_course
 
 # Logger
 logger = logging.getLogger(__name__)
@@ -35,7 +34,7 @@ class PaymeError:
     INVALID_AMOUNT = -31001
     ORDER_NOT_FOUND = -31050
     USER_NOT_FOUND = -31050
-    ALREADY_PAID = -31051
+    COURSE_NOT_FOUND = -31050
     CANT_PERFORM = -31008
     TRANSACTION_NOT_FOUND = -31003
     INVALID_ACCOUNT = -31050
@@ -149,8 +148,9 @@ async def check_perform_transaction(params: dict) -> dict:
     account = params.get("account", {})
     amount = params.get("amount")
     user_id = account.get("user_id")
+    course_id = account.get("course_id")
 
-    logger.info(f"CheckPerformTransaction: user_id={user_id}, amount={amount}")
+    logger.info(f"CheckPerformTransaction: user_id={user_id}, course_id={course_id}, amount={amount}")
 
     # User ID tekshirish
     if not user_id:
@@ -167,20 +167,29 @@ async def check_perform_transaction(params: dict) -> dict:
     if not user:
         return error_response(PaymeError.USER_NOT_FOUND, "User not found")
 
-    # Summa tekshirish
-    if amount != PAYME_AMOUNT:
+    # Kurs tekshirish
+    if course_id:
+        try:
+            course_id_int = int(course_id)
+            course = await get_course(course_id_int)
+        except ValueError:
+            course = await get_active_course()
+    else:
+        course = await get_active_course()
+
+    if not course:
+        return error_response(PaymeError.COURSE_NOT_FOUND, "Course not found")
+
+    # Summa tekshirish (kurs narxi bilan)
+    if amount != course['price']:
         return error_response(
             PaymeError.INVALID_AMOUNT,
-            f"Invalid amount. Expected {PAYME_AMOUNT}, got {amount}"
+            f"Invalid amount. Expected {course['price']}, got {amount}"
         )
 
-    # User allaqachon to'lov qilganmi
-    if await has_successful_payment(user_id_int):
-        return error_response(PaymeError.ALREADY_PAID, "User already paid")
-
-    # Shu user uchun pending tranzaksiya bormi
+    # Shu user va kurs uchun pending tranzaksiya bormi
     try:
-        pending_order = await get_pending_order_by_user(user_id_int)
+        pending_order = await get_pending_order_by_user(user_id_int, course['id'])
         if pending_order:
             return error_response(PaymeError.ORDER_NOT_FOUND, "Another transaction in progress")
     except Exception as e:
@@ -196,8 +205,9 @@ async def create_transaction(params: dict) -> dict:
     amount = params.get("amount")
     time_param = params.get("time")
     user_id = account.get("user_id")
+    course_id = account.get("course_id")
 
-    logger.info(f"CreateTransaction: user_id={user_id}, payme_id={payme_id}, amount={amount}")
+    logger.info(f"CreateTransaction: user_id={user_id}, course_id={course_id}, payme_id={payme_id}, amount={amount}")
 
     # User ID tekshirish
     if not user_id:
@@ -214,13 +224,22 @@ async def create_transaction(params: dict) -> dict:
     if not user:
         return error_response(PaymeError.USER_NOT_FOUND, "User not found")
 
-    # Summa tekshirish
-    if amount != PAYME_AMOUNT:
-        return error_response(PaymeError.INVALID_AMOUNT, "Invalid amount")
+    # Kurs tekshirish
+    if course_id:
+        try:
+            course_id_int = int(course_id)
+            course = await get_course(course_id_int)
+        except ValueError:
+            course = await get_active_course()
+    else:
+        course = await get_active_course()
 
-    # User allaqachon to'lov qilganmi
-    if await has_successful_payment(user_id_int):
-        return error_response(PaymeError.ALREADY_PAID, "User already paid")
+    if not course:
+        return error_response(PaymeError.COURSE_NOT_FOUND, "Course not found")
+
+    # Summa tekshirish
+    if amount != course['price']:
+        return error_response(PaymeError.INVALID_AMOUNT, "Invalid amount")
 
     try:
         # Mavjud tranzaksiya bormi (shu payme_id bilan)
@@ -236,15 +255,15 @@ async def create_transaction(params: dict) -> dict:
                 "state": existing['state']
             })
 
-        # Shu user uchun pending tranzaksiya bormi
-        pending_order = await get_pending_order_by_user(user_id_int)
+        # Shu user va kurs uchun pending tranzaksiya bormi
+        pending_order = await get_pending_order_by_user(user_id_int, course['id'])
         if pending_order:
             # Agar boshqa tranzaksiya band qilgan bo'lsa
             if pending_order['payme_transaction_id'] != payme_id:
                 return error_response(PaymeError.ORDER_NOT_FOUND, "Another transaction in progress")
 
-        # Yangi order yaratish
-        order_id = await create_order(user_id_int, amount)
+        # Yangi order yaratish (course_id bilan)
+        order_id = await create_order(user_id_int, amount, course['id'])
         logger.info(f"Order created: {order_id}")
 
         # Payme ID ni saqlash
@@ -289,10 +308,10 @@ async def perform_transaction(params: dict) -> dict:
 
         # To'lovni tasdiqlash
         await set_order_perform_time(order['order_id'])
-        logger.info(f"Payment confirmed for user: {order['user_id']}")
+        logger.info(f"Payment confirmed for user: {order['user_id']}, course: {order['course_id']}")
 
-        # Foydalanuvchiga xabar yuborish
-        await send_success_message(order['user_id'])
+        # Foydalanuvchiga xabar yuborish (kurs bo'yicha)
+        await send_success_message(order['user_id'], order['course_id'])
 
         order = await get_order_by_id(order['order_id'])
 
@@ -392,7 +411,8 @@ async def get_statement(params: dict) -> dict:
                 "time": timestamp_to_ms(order['created_at']),
                 "amount": order['amount'],
                 "account": {
-                    "user_id": str(order['user_id'])
+                    "user_id": str(order['user_id']),
+                    "course_id": str(order['course_id']) if order['course_id'] else None
                 },
                 "create_time": timestamp_to_ms(order['created_at']),
                 "perform_time": timestamp_to_ms(order['perform_time']),
@@ -410,7 +430,7 @@ async def get_statement(params: dict) -> dict:
         return success_response({"transactions": []})
 
 
-async def send_success_message(user_id: int):
+async def send_success_message(user_id: int, course_id: int = None):
     """Muvaffaqiyatli to'lov haqida xabar yuborish"""
     try:
         from main import get_bot
@@ -420,31 +440,46 @@ async def send_success_message(user_id: int):
             logger.error("Bot app not found")
             return
 
+        # Kurs ma'lumotlarini olish
+        if course_id:
+            course = await get_course(course_id)
+        else:
+            course = await get_active_course()
+
+        if not course:
+            logger.error("Course not found for success message")
+            return
+
+        channel_id = course['channel_id']
+        channel_url = course['channel_url']
+
         # Bir martalik invite link yaratish
         invite_link = None
         try:
             invite = await bot_app.bot.create_chat_invite_link(
-                chat_id=PRIVATE_CHANNEL_ID,
+                chat_id=int(channel_id),
                 member_limit=1
             )
             invite_link = invite.invite_link
-            logger.info(f"Invite link created for user: {user_id}")
+            logger.info(f"Invite link created for user: {user_id}, course: {course_id}")
         except Exception as e:
             logger.error(f"Invite link yaratishda xato: {e}")
+            # Agar invite link yaratilmasa, channel_url ishlatiladi
+            invite_link = channel_url
 
         # Xabar yuborish
         if invite_link:
             text = (
-                "🎉 <b>Tabriklaymiz!</b>\n\n"
-                "Sizning to'lovingiz muvaffaqiyatli qabul qilindi!\n\n"
+                f"🎉 <b>Tabriklaymiz!</b>\n\n"
+                f"Siz <b>{course['name']}</b> kursiga muvaffaqiyatli to'lov qildingiz!\n\n"
                 f"🔗 Yopiq kanalga kirish uchun link:\n{invite_link}\n\n"
-                "⚠️ Link faqat bir martalik!"
+                f"⚠️ Link faqat bir martalik!"
             )
         else:
             text = (
-                "🎉 <b>Tabriklaymiz!</b>\n\n"
-                "Sizning to'lovingiz muvaffaqiyatli qabul qilindi!\n\n"
-                "⚠️ Admin siz bilan tez orada bog'lanadi."
+                f"🎉 <b>Tabriklaymiz!</b>\n\n"
+                f"Siz <b>{course['name']}</b> kursiga muvaffaqiyatli to'lov qildingiz!\n\n"
+                f"⚠️ Admin siz bilan tez orada bog'lanadi."
             )
 
         await bot_app.bot.send_message(

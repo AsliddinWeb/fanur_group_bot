@@ -80,7 +80,25 @@ async def create_tables():
         await db.execute('CREATE INDEX IF NOT EXISTS idx_payments_chat_id ON payments(chat_id)')
         await db.execute('CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)')
 
-        # Payme transactions jadvali
+        # Courses jadvali (YANGI)
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS courses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                welcome_text TEXT,
+                price INTEGER NOT NULL,
+                channel_id TEXT NOT NULL,
+                channel_url TEXT,
+                is_active INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Courses index
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_courses_is_active ON courses(is_active)')
+
+        # Payme transactions jadvali (eski - course_id yo'q)
         await db.execute('''
             CREATE TABLE IF NOT EXISTS payme_transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,11 +114,26 @@ async def create_tables():
             )
         ''')
 
+        # Migration - course_id ustunini qo'shish (agar yo'q bo'lsa)
+        try:
+            await db.execute('ALTER TABLE payme_transactions ADD COLUMN course_id INTEGER')
+            logger.info("Migration: course_id column added to payme_transactions")
+        except Exception:
+            # Ustun allaqachon mavjud
+            pass
+
         # Payme transactions indexlar
         await db.execute('CREATE INDEX IF NOT EXISTS idx_payme_user_id ON payme_transactions(user_id)')
         await db.execute('CREATE INDEX IF NOT EXISTS idx_payme_order_id ON payme_transactions(order_id)')
-        await db.execute('CREATE INDEX IF NOT EXISTS idx_payme_transaction_id ON payme_transactions(payme_transaction_id)')
+        await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_payme_transaction_id ON payme_transactions(payme_transaction_id)')
         await db.execute('CREATE INDEX IF NOT EXISTS idx_payme_state ON payme_transactions(state)')
+
+        # course_id index (agar ustun mavjud bo'lsa)
+        try:
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_payme_course_id ON payme_transactions(course_id)')
+        except Exception:
+            pass
 
         # Default settings
         await db.execute('''
@@ -109,3 +142,15 @@ async def create_tables():
 
         await db.commit()
         logger.info("Database tables and indexes created successfully")
+
+
+async def migrate_add_course_id():
+    """Eski payme_transactions jadvaliga course_id qo'shish (backup funksiya)"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute('ALTER TABLE payme_transactions ADD COLUMN course_id INTEGER')
+            await db.commit()
+            logger.info("Migration: course_id column added")
+        except Exception as e:
+            # Ustun allaqachon mavjud
+            logger.debug(f"Migration skipped: {e}")
