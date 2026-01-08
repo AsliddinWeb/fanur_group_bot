@@ -272,12 +272,18 @@ async def delete_course_callback(update: Update, context: ContextTypes.DEFAULT_T
     course_id = int(query.data.split("_")[2])
     course = await get_course(course_id)
 
+    if not course:
+        await query.answer("❌ Kurs topilmadi!", show_alert=True)
+        await courses_menu_callback(update, context)
+        return
+
     if course['is_active']:
         await query.answer("❌ Aktiv kursni o'chirib bo'lmaydi!", show_alert=True)
         return
 
+    course_name = course['name']
     await delete_course(course_id)
-    await query.answer(f"🗑️ {course['name']} o'chirildi!", show_alert=True)
+    await query.answer(f"🗑️ O'chirildi!", show_alert=True)
 
     # Kurslar menyusiga qaytish
     await courses_menu_callback(update, context)
