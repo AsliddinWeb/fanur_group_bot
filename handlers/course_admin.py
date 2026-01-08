@@ -46,7 +46,7 @@ async def courses_menu_callback(update: Update, context: ContextTypes.DEFAULT_TY
     courses = await get_all_courses()
     active_course = await get_active_course()
 
-    text = "📚 <b>Kurslar boshqaruvi</b>\n\n"
+    text = "📚 Kurslar boshqaruvi\n\n"
 
     if not courses:
         text += "❌ Hozircha kurslar yo'q.\n\n➕ Yangi kurs qo'shish uchun tugmani bosing."
@@ -54,16 +54,15 @@ async def courses_menu_callback(update: Update, context: ContextTypes.DEFAULT_TY
         for i, course in enumerate(courses, 1):
             status = "✅" if course['is_active'] else "⭕"
             price_text = await format_price(course['price'])
-            text += f"{i}. {status} <b>{course['name']}</b> - {price_text} so'm\n"
+            text += f"{i}. {status} {course['name']} - {price_text} so'm\n"
 
         if active_course:
-            text += f"\n🎯 <b>Aktiv kurs:</b> {active_course['name']}"
+            text += f"\n🎯 Aktiv kurs: {active_course['name']}"
         else:
-            text += "\n⚠️ <b>Aktiv kurs tanlanmagan!</b>"
+            text += "\n⚠️ Aktiv kurs tanlanmagan!"
 
     await query.message.edit_text(
         text=text,
-        parse_mode='HTML',
         reply_markup=get_courses_keyboard(courses)
     )
 
@@ -78,10 +77,9 @@ async def add_course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data['new_course'] = {}
 
     await query.message.edit_text(
-        text="📝 <b>Yangi kurs qo'shish</b>\n\n"
+        text="📝 Yangi kurs qo'shish\n\n"
              "1️⃣ Kurs nomini kiriting:\n\n"
-             "Misol: <code>2026-yilga Qadam</code>",
-        parse_mode='HTML',
+             "Misol: 2026-yilga Qadam",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -98,10 +96,9 @@ async def receive_course_name(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data['state'] = 'waiting_course_price'
 
     await update.message.reply_text(
-        text=f"✅ Kurs nomi: <b>{name}</b>\n\n"
+        text=f"✅ Kurs nomi: {name}\n\n"
              "2️⃣ Narxni kiriting (so'mda):\n\n"
-             "Misol: <code>97000</code>",
-        parse_mode='HTML',
+             "Misol: 97000",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -117,8 +114,7 @@ async def receive_course_price(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if not text.isdigit():
         await update.message.reply_text(
-            text="❌ Iltimos, faqat raqam kiriting!\n\nMisol: <code>97000</code>",
-            parse_mode='HTML',
+            text="❌ Iltimos, faqat raqam kiriting!\n\nMisol: 97000",
             reply_markup=get_cancel_keyboard()
         )
         return WAITING_COURSE_PRICE
@@ -128,10 +124,9 @@ async def receive_course_price(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data['state'] = 'waiting_course_channel_id'
 
     await update.message.reply_text(
-        text=f"✅ Narx: <b>{text}</b> so'm\n\n"
+        text=f"✅ Narx: {text} so'm\n\n"
              "3️⃣ Yopiq kanal ID kiriting:\n\n"
-             "Misol: <code>-1001234567890</code>",
-        parse_mode='HTML',
+             "Misol: -1001234567890",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -148,10 +143,9 @@ async def receive_course_channel_id(update: Update, context: ContextTypes.DEFAUL
     context.user_data['state'] = 'waiting_course_channel_url'
 
     await update.message.reply_text(
-        text=f"✅ Kanal ID: <code>{channel_id}</code>\n\n"
+        text=f"✅ Kanal ID: {channel_id}\n\n"
              "4️⃣ Yopiq kanal linkini kiriting:\n\n"
-             "Misol: <code>https://t.me/+abc123</code>",
-        parse_mode='HTML',
+             "Misol: https://t.me/+abc123",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -171,8 +165,7 @@ async def receive_course_channel_url(update: Update, context: ContextTypes.DEFAU
         text=f"✅ Kanal link: {channel_url}\n\n"
              "5️⃣ Welcome matnini kiriting:\n\n"
              "Bu matn foydalanuvchi /start bosganida ko'rinadi.\n"
-             "HTML formatda yozishingiz mumkin.",
-        parse_mode='HTML',
+             "Oddiy matn yozing (emoji ishlatsa bo'ladi).",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -199,12 +192,11 @@ async def receive_course_welcome_text(update: Update, context: ContextTypes.DEFA
     price_text = await format_price(course_data['price'])
 
     await update.message.reply_text(
-        text=f"✅ <b>Kurs muvaffaqiyatli yaratildi!</b>\n\n"
-             f"📚 <b>Nomi:</b> {course_data['name']}\n"
-             f"💰 <b>Narx:</b> {price_text} so'm\n"
-             f"📢 <b>Kanal:</b> {course_data['channel_url']}\n\n"
+        text=f"✅ Kurs muvaffaqiyatli yaratildi!\n\n"
+             f"📚 Nomi: {course_data['name']}\n"
+             f"💰 Narx: {price_text} so'm\n"
+             f"📢 Kanal: {course_data['channel_url']}\n\n"
              f"⚠️ Kursni aktivlashtirish uchun kurslar ro'yxatidan tanlang.",
-        parse_mode='HTML',
         reply_markup=get_back_keyboard()
     )
 
@@ -232,14 +224,10 @@ async def course_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
     status = "✅ Aktiv" if course['is_active'] else "⭕ Noaktiv"
     price_text = await format_price(course['price'])
 
-    # Welcome matnni qisqartirish (HTML teglarsiz)
+    # Welcome matnni qisqartirish
     welcome_preview = course['welcome_text'] or '-'
     if len(welcome_preview) > 100:
         welcome_preview = welcome_preview[:100] + '...'
-    # HTML teglarni olib tashlash
-    welcome_preview = welcome_preview.replace('<b>', '').replace('</b>', '')
-    welcome_preview = welcome_preview.replace('<i>', '').replace('</i>', '')
-    welcome_preview = welcome_preview.replace('<code>', '').replace('</code>', '')
 
     text = (
         f"📚 {course['name']}\n\n"
@@ -315,9 +303,8 @@ async def edit_course_menu_callback(update: Update, context: ContextTypes.DEFAUL
     context.user_data['edit_course_id'] = course_id
 
     await query.message.edit_text(
-        text=f"✏️ <b>{course['name']}</b> - Tahrirlash\n\n"
+        text=f"✏️ {course['name']} - Tahrirlash\n\n"
              f"Qaysi maydonni o'zgartirmoqchisiz?",
-        parse_mode='HTML',
         reply_markup=get_course_edit_keyboard(course_id)
     )
 
@@ -328,12 +315,12 @@ async def edit_course_name_callback(update: Update, context: ContextTypes.DEFAUL
     query = update.callback_query
     await query.answer()
 
-    course_id = context.user_data.get('edit_course_id')
+    course_id = int(query.data.split("_")[2])
+    context.user_data['edit_course_id'] = course_id
     context.user_data['state'] = 'waiting_edit_name'
 
     await query.message.edit_text(
         text="📝 Yangi kurs nomini kiriting:",
-        parse_mode='HTML',
         reply_markup=get_cancel_keyboard()
     )
 
@@ -351,8 +338,7 @@ async def receive_edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update_course(course_id, name=new_name)
 
     await update.message.reply_text(
-        text=f"✅ Kurs nomi yangilandi: <b>{new_name}</b>",
-        parse_mode='HTML',
+        text=f"✅ Kurs nomi yangilandi: {new_name}",
         reply_markup=get_back_keyboard()
     )
 
@@ -366,12 +352,12 @@ async def edit_course_price_callback(update: Update, context: ContextTypes.DEFAU
     query = update.callback_query
     await query.answer()
 
-    course_id = context.user_data.get('edit_course_id')
+    course_id = int(query.data.split("_")[2])
+    context.user_data['edit_course_id'] = course_id
     context.user_data['state'] = 'waiting_edit_price'
 
     await query.message.edit_text(
-        text="💰 Yangi narxni kiriting (so'mda):\n\nMisol: <code>97000</code>",
-        parse_mode='HTML',
+        text="💰 Yangi narxni kiriting (so'mda):\n\nMisol: 97000",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -398,8 +384,7 @@ async def receive_edit_price(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update_course(course_id, price=new_price)
 
     await update.message.reply_text(
-        text=f"✅ Kurs narxi yangilandi: <b>{text}</b> so'm",
-        parse_mode='HTML',
+        text=f"✅ Kurs narxi yangilandi: {text} so'm",
         reply_markup=get_back_keyboard()
     )
 
@@ -413,11 +398,12 @@ async def edit_course_channel_callback(update: Update, context: ContextTypes.DEF
     query = update.callback_query
     await query.answer()
 
+    course_id = int(query.data.split("_")[2])
+    context.user_data['edit_course_id'] = course_id
     context.user_data['state'] = 'waiting_edit_channel_id'
 
     await query.message.edit_text(
-        text="📢 Yangi kanal ID kiriting:\n\nMisol: <code>-1001234567890</code>",
-        parse_mode='HTML',
+        text="📢 Yangi kanal ID kiriting:\n\nMisol: -1001234567890",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -436,8 +422,7 @@ async def receive_edit_channel_id(update: Update, context: ContextTypes.DEFAULT_
     context.user_data['state'] = 'waiting_edit_channel_url'
 
     await update.message.reply_text(
-        text=f"✅ Kanal ID yangilandi!\n\n🔗 Endi kanal URL kiriting:\n\nMisol: <code>https://t.me/+abc123</code>",
-        parse_mode='HTML',
+        text=f"✅ Kanal ID yangilandi!\n\n🔗 Endi kanal URL kiriting:\n\nMisol: https://t.me/+abc123",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -456,7 +441,6 @@ async def receive_edit_channel_url(update: Update, context: ContextTypes.DEFAULT
 
     await update.message.reply_text(
         text=f"✅ Kanal URL yangilandi: {new_channel_url}",
-        parse_mode='HTML',
         reply_markup=get_back_keyboard()
     )
 
@@ -470,12 +454,13 @@ async def edit_course_welcome_callback(update: Update, context: ContextTypes.DEF
     query = update.callback_query
     await query.answer()
 
+    course_id = int(query.data.split("_")[2])
+    context.user_data['edit_course_id'] = course_id
     context.user_data['state'] = 'waiting_edit_welcome_text'
 
     await query.message.edit_text(
         text="📝 Yangi welcome matnini kiriting:\n\n"
-             "HTML formatda yozishingiz mumkin.",
-        parse_mode='HTML',
+             "Oddiy matn yozing (emoji ishlatsa bo'ladi).",
         reply_markup=get_cancel_keyboard()
     )
 
@@ -494,7 +479,6 @@ async def receive_edit_welcome_text(update: Update, context: ContextTypes.DEFAUL
 
     await update.message.reply_text(
         text="✅ Welcome matn yangilandi!",
-        parse_mode='HTML',
         reply_markup=get_back_keyboard()
     )
 
